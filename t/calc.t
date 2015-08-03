@@ -19,12 +19,19 @@ for(my $i = 0; $i < 8; $i++){
     is (sprintf("%.2lf",$me->{weight}->[$i]), sprintf("%.2lf",$weight[$i]));
 }
 
-$me = Algorithm::MaximumEntropy->new(docs => \@docs, size => 8, iter_limit => 10000);
+$me = Algorithm::MaximumEntropy->new(docs => \@docs, size => 8, iter_limit => 20000);
 $me->train();
 
 @weight = (0.42, -0.25, 0.06, -0.26, -0.42, 0.25, -0.06, 0.26);
 for(my $i = 0; $i < 8; $i++){
     is (sprintf("%.2lf",$me->{weight}->[$i]), sprintf("%.2lf",$weight[$i]));
 }
+
+@docs = ();
+push @docs, Algorithm::MaximumEntropy::Doc->new(text => 'exciting boring');
+$me->docs(\@docs);
+my @result = $me->predict();
+is (sprintf("%.2lf",$result[0]->{N}),sprintf("%.2lf",0.60));
+is (sprintf("%.2lf",$result[0]->{P}),sprintf("%.2lf",0.40));
 
 done_testing;

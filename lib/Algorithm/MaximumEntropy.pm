@@ -52,7 +52,24 @@ has 'iter_limit' => (
 sub BUILD {
     my $self = shift;
 
-    # extract feature
+    $self->_extract_feature();
+    $self->_init_weight();
+}
+
+sub _init_weight {
+    my $self = shift;
+    
+    $self->{weight} = [];
+    for(my $i = 0; $i < $self->size; $i++) {
+	push @{ $self->{weight} }, 0.0;
+    }
+}
+
+
+sub _extract_feature {
+    my $self = shift;
+    
+    $self->{features} = {};
     for(my $doc_i = 0; $doc_i < @{ $self->{docs} }; $doc_i++){
 	foreach my $label ('P','N') {
 	    my @vector;
@@ -69,35 +86,48 @@ sub BUILD {
 	    = Algorithm::MaximumEntropy::Feature->new(vector => \@vector,label => $label);
 	}
     }
+};
 
-    # init weight
-    for(my $i = 0; $i < $self->size; $i++) {
-	push @{ $self->{weight} }, 0.0;
+sub predict {
+    my $self = shift;
+
+    $self->_extract_feature();
+    $self->_compute_Z();
+
+    my @all_result;
+    for(my $doc_i = 0; $doc_i < @{ $self->{docs} }; $doc_i++){
+	my $hash;
+	foreach my $label ('P','N') {
+	    my $y_given_d = 1.0 / $self->{Z}->[$doc_i] * exp(_dot($self->{weight},$self->{features}->{$doc_i}->{$label}->{vector}));
+	    $hash->{$label} = $y_given_d;
+	}
+	push @all_result, $hash;
     }
+    return @all_result;
 }
 
 sub train {
     my $self = shift;
+
     for(my $round = 0; $round < $self->{iter_limit}; $round++){
-	$self->_train();
+	$self->_compute_Z();
+	my $delta_l = $self->_compute_delta();
+	$self->_compute_weight($delta_l);
     }
 }
 
-sub _train {
-    my $self = shift;
+sub _compute_weight {
+    my ($self,$delta_l) = @_;
 
-    # set Z
-    for(my $doc_i = 0; $doc_i < @{ $self->{docs} }; $doc_i++){
-	$self->{Z}->[$doc_i] = 0.0;
-	foreach my $label ('P','N') {
-	    my $sum = 0.0;
-	    for(my $vector_i = 0; $vector_i < @{ $self->{features}->{$doc_i}->{$label}->{vector} }; $vector_i++){
-		$sum += $self->{weight}->[$vector_i]
-		    * $self->{features}->{$doc_i}->{$label}->{vector}->[$vector_i];
-	    }
-	    $self->{Z}->[$doc_i] += exp($sum);
-	}
+    my $next_weight = [];
+    for(my $vector_i = 0; $vector_i < $self->{size}; $vector_i++){
+	$next_weight->[$vector_i] += $self->{weight}->[$vector_i] + $self->{alpha} * $delta_l->[$vector_i];
     }
+    $self->{weight} = $next_weight;
+}
+
+sub _compute_delta {
+    my $self = shift;
 
     my $delta_l = [];
     for(my $doc_i = 0; $doc_i < @{ $self->{docs} }; $doc_i++){
@@ -117,12 +147,23 @@ sub _train {
     for(my $vector_i = 0; $vector_i < $self->{size}; $vector_i++){
 	$delta_l->[$vector_i] -= $self->{C} * $self->{weight}->[$vector_i];
     }
+    return $delta_l;
+}
 
-    my $next_weight = [];
-    for(my $vector_i = 0; $vector_i < $self->{size}; $vector_i++){
-	$next_weight->[$vector_i] += $self->{weight}->[$vector_i] + $self->{alpha} * $delta_l->[$vector_i];
+sub _compute_Z {
+    my $self = shift;
+
+    for(my $doc_i = 0; $doc_i < @{ $self->{docs} }; $doc_i++){
+	$self->{Z}->[$doc_i] = 0.0;
+	foreach my $label ('P','N') {
+	    my $sum = 0.0;
+	    for(my $vector_i = 0; $vector_i < @{ $self->{features}->{$doc_i}->{$label}->{vector} }; $vector_i++){
+		$sum += $self->{weight}->[$vector_i]
+		    * $self->{features}->{$doc_i}->{$label}->{vector}->[$vector_i];
+	    }
+	    $self->{Z}->[$doc_i] += exp($sum);
+	}
     }
-    $self->{weight} = $next_weight;
 }
 
 sub _dot {

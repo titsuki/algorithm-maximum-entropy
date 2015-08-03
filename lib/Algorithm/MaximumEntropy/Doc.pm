@@ -12,10 +12,6 @@ has 'text' => (
     isa => 'Str'
     );
 
-sub BUILD {
-    
-}
-
 __PACKAGE__->meta->make_immutable();
 
 1;
