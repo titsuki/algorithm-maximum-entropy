@@ -55,6 +55,18 @@ has 'delta_l' => (
     default => sub{ [] }
     );
 
+has 'labels' => (
+    is => 'rw',
+    isa => 'ArrayRef[Str]',
+    required => 1
+    );
+
+has 'feature_functions' => (
+    is => 'rw',
+    isa => 'ArrayRef',
+    required => 1
+    );
+
 sub BUILD {
     my $self = shift;
 
@@ -77,19 +89,13 @@ sub _extract_feature {
     
     $self->{features} = {};
     for(my $doc_i = 0; $doc_i < @{ $self->{docs} }; $doc_i++){
-	foreach my $label ('P','N') {
+	foreach my $label (@{ $self->{labels} }) {
 	    my @vector;
-	    push @vector, _feature_func1($self->{docs}->[$doc_i]->{text}, $label);
-	    push @vector, _feature_func2($self->{docs}->[$doc_i]->{text}, $label);
-	    push @vector, _feature_func3($self->{docs}->[$doc_i]->{text}, $label);
-	    push @vector, _feature_func4($self->{docs}->[$doc_i]->{text}, $label);
-	    push @vector, _feature_func5($self->{docs}->[$doc_i]->{text}, $label);
-	    push @vector, _feature_func6($self->{docs}->[$doc_i]->{text}, $label);
-	    push @vector, _feature_func7($self->{docs}->[$doc_i]->{text}, $label);
-	    push @vector, _feature_func8($self->{docs}->[$doc_i]->{text}, $label);
-
-	    $self->{features}->{$doc_i}->{$label}
-	    = Algorithm::MaximumEntropy::Feature->new(vector => \@vector,label => $label);
+	    foreach my $func (@{ $self->{feature_functions} }){
+		push @vector,$func->($self->{docs}->[$doc_i]->{text}, $label);
+		$self->{features}->{$doc_i}->{$label}
+		= Algorithm::MaximumEntropy::Feature->new(vector => \@vector,label => $label);
+	    }
 	}
     }
 };
@@ -103,7 +109,7 @@ sub predict {
     my @all_result;
     for(my $doc_i = 0; $doc_i < @{ $self->{docs} }; $doc_i++){
 	my $hash;
-	foreach my $label ('P','N') {
+	foreach my $label (@{ $self->{labels} }) {
 	    my $y_given_d = 1.0 / $self->{Z}->[$doc_i] * exp(_dot($self->{weight},$self->{features}->{$doc_i}->{$label}->{vector}));
 	    $hash->{$label} = $y_given_d;
 	}
@@ -142,7 +148,7 @@ sub _compute_delta {
 	for(my $vector_i = 0; $vector_i < @{ $doc_vector }; $vector_i++){
 	    $self->{delta_l}->[$vector_i] += $doc_vector->[$vector_i];
 	}
-	foreach my $label ('P','N') {
+	foreach my $label (@{ $self->{labels} }) {
 	    for(my $vector_i = 0; $vector_i < @{ $self->{features}->{$doc_i}->{$label}->{vector} }; $vector_i++){
 		my $y_given_d = 1.0 / $self->{Z}->[$doc_i] * exp(_dot($self->{weight},$self->{features}->{$doc_i}->{$label}->{vector}));
 		$self->{delta_l}->[$vector_i] -= $y_given_d * $self->{features}->{$doc_i}->{$label}->{vector}->[$vector_i];
@@ -160,7 +166,7 @@ sub _compute_Z {
 
     for(my $doc_i = 0; $doc_i < @{ $self->{docs} }; $doc_i++){
 	$self->{Z}->[$doc_i] = 0.0;
-	foreach my $label ('P','N') {
+	foreach my $label (@{ $self->{labels} }) {
 	    my $sum = 0.0;
 	    for(my $vector_i = 0; $vector_i < @{ $self->{features}->{$doc_i}->{$label}->{vector} }; $vector_i++){
 		$sum += $self->{weight}->[$vector_i]
@@ -179,54 +185,6 @@ sub _dot {
 	$sum += $vector1->[$i] * $vector2->[$i];
     }
     return $sum;
-}
-
-sub _feature_func1 {
-    my ($doc, $label) = @_;
-    return 0 if($label ne 'P');
-    return scalar (grep { $_ eq 'good' } split(/ /,$doc)) > 0 ? 1 : 0;
-}
-
-sub _feature_func2 {
-    my ($doc, $label) = @_;
-    return 0 if($label ne 'P');
-    return scalar (grep { $_ eq 'bad' } split(/ /,$doc)) > 0 ? 1 : 0;
-}
-
-sub _feature_func3 {
-    my ($doc, $label) = @_;
-    return 0 if($label ne 'P');
-    return scalar (grep { $_ eq 'exciting' } split(/ /,$doc)) > 0 ? 1 : 0;
-}
-
-sub _feature_func4 {
-    my ($doc, $label) = @_;
-    return 0 if($label ne 'P');
-    return scalar (grep { $_ eq 'boring' } split(/ /,$doc)) > 0 ? 1 : 0;
-}
-
-sub _feature_func5 {
-    my ($doc, $label) = @_;
-    return 0 if($label ne 'N');
-    return scalar (grep { $_ eq 'good' } split(/ /,$doc)) > 0 ? 1 : 0;
-}
-
-sub _feature_func6 {
-    my ($doc, $label) = @_;
-    return 0 if($label ne 'N');
-    return scalar (grep { $_ eq 'bad' } split(/ /,$doc)) > 0 ? 1 : 0;
-}
-
-sub _feature_func7 {
-    my ($doc, $label) = @_;
-    return 0 if($label ne 'N');
-    return scalar (grep { $_ eq 'exciting' } split(/ /,$doc)) > 0 ? 1 : 0;
-}
-
-sub _feature_func8 {
-    my ($doc, $label) = @_;
-    return 0 if($label ne 'N');
-    return scalar (grep { $_ eq 'boring' } split(/ /,$doc)) > 0 ? 1 : 0;
 }
 
 __PACKAGE__->meta->make_immutable();
