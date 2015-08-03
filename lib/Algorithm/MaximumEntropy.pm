@@ -49,6 +49,12 @@ has 'iter_limit' => (
     default => 100
     );
 
+has 'delta_l' => (
+    is => 'rw',
+    isa => 'ArrayRef[Num]',
+    default => sub{ [] }
+    );
+
 sub BUILD {
     my $self = shift;
 
@@ -111,17 +117,17 @@ sub train {
 
     for(my $round = 0; $round < $self->{iter_limit}; $round++){
 	$self->_compute_Z();
-	my $delta_l = $self->_compute_delta();
-	$self->_compute_weight($delta_l);
+	$self->_compute_delta();
+	$self->_compute_weight();
     }
 }
 
 sub _compute_weight {
-    my ($self,$delta_l) = @_;
+    my $self = shift;
 
     my $next_weight = [];
     for(my $vector_i = 0; $vector_i < $self->{size}; $vector_i++){
-	$next_weight->[$vector_i] += $self->{weight}->[$vector_i] + $self->{alpha} * $delta_l->[$vector_i];
+	$next_weight->[$vector_i] += $self->{weight}->[$vector_i] + $self->{alpha} * $self->{delta_l}->[$vector_i];
     }
     $self->{weight} = $next_weight;
 }
@@ -129,25 +135,24 @@ sub _compute_weight {
 sub _compute_delta {
     my $self = shift;
 
-    my $delta_l = [];
+    $self->{delta_l} = [];
     for(my $doc_i = 0; $doc_i < @{ $self->{docs} }; $doc_i++){
 	my $doc_vector = $self->{features}->{$doc_i}->{ $self->{docs}->[$doc_i]->{label} }->{vector};
 
 	for(my $vector_i = 0; $vector_i < @{ $doc_vector }; $vector_i++){
-	    $delta_l->[$vector_i] += $doc_vector->[$vector_i];
+	    $self->{delta_l}->[$vector_i] += $doc_vector->[$vector_i];
 	}
 	foreach my $label ('P','N') {
 	    for(my $vector_i = 0; $vector_i < @{ $self->{features}->{$doc_i}->{$label}->{vector} }; $vector_i++){
 		my $y_given_d = 1.0 / $self->{Z}->[$doc_i] * exp(_dot($self->{weight},$self->{features}->{$doc_i}->{$label}->{vector}));
-		$delta_l->[$vector_i] -= $y_given_d * $self->{features}->{$doc_i}->{$label}->{vector}->[$vector_i];
+		$self->{delta_l}->[$vector_i] -= $y_given_d * $self->{features}->{$doc_i}->{$label}->{vector}->[$vector_i];
 	    }
 	}
     }
 
     for(my $vector_i = 0; $vector_i < $self->{size}; $vector_i++){
-	$delta_l->[$vector_i] -= $self->{C} * $self->{weight}->[$vector_i];
+	$self->{delta_l}->[$vector_i] -= $self->{C} * $self->{weight}->[$vector_i];
     }
-    return $delta_l;
 }
 
 sub _compute_Z {
