@@ -93,9 +93,9 @@ sub _extract_feature {
 	    my @vector;
 	    foreach my $func (@{ $self->{feature_functions} }){
 		push @vector,$func->($self->{docs}->[$doc_i]->{text}, $label);
-		$self->{features}->{$doc_i}->{$label}
-		= Algorithm::MaximumEntropy::Feature->new(vector => \@vector,label => $label);
 	    }
+	    $self->{features}->{$doc_i}->{$label}
+	    = Algorithm::MaximumEntropy::Feature->new(vector => \@vector,label => $label);
 	}
     }
 };
