@@ -59,7 +59,7 @@ push @feature_functions, sub {
     return scalar (grep { $_ eq 'boring' } split(/ /,$doc)) > 0 ? 1 : 0;
 };
 
-my $me = Algorithm::MaximumEntropy->new(docs => \@docs, feature_functions => \@feature_functions, size => 8, iter_limit => 1,labels => ['P','N']);
+my $me = Algorithm::MaximumEntropy->new(docs => \@docs, feature_functions => \@feature_functions, iter_limit => 1,labels => ['P','N']);
 
 $me->train();
 
@@ -68,7 +68,7 @@ for(my $i = 0; $i < 8; $i++){
     is (sprintf("%.2lf",$me->{weight}->[$i]), sprintf("%.2lf",$weight[$i]));
 }
 
-$me = Algorithm::MaximumEntropy->new(docs => \@docs, feature_functions => \@feature_functions, size => 8, iter_limit => 20000, labels => ['P','N']);
+$me = Algorithm::MaximumEntropy->new(docs => \@docs, feature_functions => \@feature_functions, iter_limit => 20000, labels => ['P','N']);
 $me->train();
 
 @weight = (0.42, -0.25, 0.06, -0.26, -0.42, 0.25, -0.06, 0.26);

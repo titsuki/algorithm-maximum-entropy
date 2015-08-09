@@ -14,11 +14,6 @@ has 'features' => (
     default => sub{ {} }
     );
 
-has 'size' => (
-    is => 'rw',
-    isa => 'Int'
-    );
-
 has 'weight' => (
     is => 'rw',
     isa => 'ArrayRef[Num]',
@@ -78,7 +73,7 @@ sub _init_weight {
     my $self = shift;
     
     $self->{weight} = [];
-    for(my $i = 0; $i < $self->size; $i++) {
+    for(my $i = 0; $i < @{ $self->{feature_functions} }; $i++) {
 	push @{ $self->{weight} }, 0.0;
     }
 }
@@ -132,7 +127,7 @@ sub _compute_weight {
     my $self = shift;
 
     my $next_weight = [];
-    for(my $vector_i = 0; $vector_i < $self->{size}; $vector_i++){
+    for(my $vector_i = 0; $vector_i < @{ $self->{feature_functions} }; $vector_i++){
 	$next_weight->[$vector_i] += $self->{weight}->[$vector_i] + $self->{alpha} * $self->{delta_l}->[$vector_i];
     }
     $self->{weight} = $next_weight;
@@ -156,7 +151,7 @@ sub _compute_delta {
 	}
     }
 
-    for(my $vector_i = 0; $vector_i < $self->{size}; $vector_i++){
+    for(my $vector_i = 0; $vector_i < @{ $self->{feature_functions} }; $vector_i++){
 	$self->{delta_l}->[$vector_i] -= $self->{C} * $self->{weight}->[$vector_i];
     }
 }
