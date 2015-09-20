@@ -26,7 +26,7 @@ has 'Z' => (
     default => sub{ [] }
     );
 
-has 'alpha' => (
+has 'learning_rate' => (
     is => 'rw',
     isa => 'Num',
     default => 0.1
@@ -128,7 +128,7 @@ sub _compute_weight {
 
     my $next_weight = [];
     for(my $vector_i = 0; $vector_i < @{ $self->{feature_functions} }; $vector_i++){
-	$next_weight->[$vector_i] += $self->{weight}->[$vector_i] + $self->{alpha} * $self->{delta_l}->[$vector_i];
+	$next_weight->[$vector_i] += $self->{weight}->[$vector_i] + $self->{learning_rate} * $self->{delta_l}->[$vector_i];
     }
     $self->{weight} = $next_weight;
 }
