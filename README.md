@@ -9,6 +9,6 @@
 ## USAGE
 ```
 $ git clone https://github.com/titsuki/algorithm-maximum-entropy.git
-$ cd algorithm-crf
+$ cd algorithm-maximum-entropy
 $ prove -Ilib
 ```
